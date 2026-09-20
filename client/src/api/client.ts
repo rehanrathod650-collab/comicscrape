@@ -18,13 +18,387 @@ import {
 
 const API_BASE = '/api';
 
-// In-memory local fallback store for seamless interactive demo operation
-let localResources: Resource[] = [...DEMO_RESOURCES];
-let localJobs: ScraperJob[] = [...DEMO_JOBS];
-let localCollections: Collection[] = [...DEMO_COLLECTIONS];
-let localSavedSearches: SavedSearch[] = [...DEMO_SAVED_SEARCHES];
-let localNotifications: NotificationItem[] = [...DEMO_NOTIFICATIONS];
-let localSources: SourceConfig[] = [...DEMO_SOURCES];
+// ─── localStorage persistence helpers ────────────────────────────────────────
+const LS_KEYS = {
+  resources: 'cs_resources',
+  jobs: 'cs_jobs',
+  collections: 'cs_collections',
+  savedSearches: 'cs_saved_searches',
+  notifications: 'cs_notifications',
+  sources: 'cs_sources',
+};
+
+function lsLoad<T>(key: string, fallback: T[]): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw) as T[];
+  } catch {}
+  return fallback;
+}
+
+function lsSave<T>(key: string, data: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+}
+
+// ─── In-memory stores backed by localStorage ─────────────────────────────────
+let localResources: Resource[] = lsLoad(LS_KEYS.resources, [...DEMO_RESOURCES]);
+let localJobs: ScraperJob[] = lsLoad(LS_KEYS.jobs, [...DEMO_JOBS]);
+let localCollections: Collection[] = lsLoad(LS_KEYS.collections, [...DEMO_COLLECTIONS]);
+let localSavedSearches: SavedSearch[] = lsLoad(LS_KEYS.savedSearches, [...DEMO_SAVED_SEARCHES]);
+let localNotifications: NotificationItem[] = lsLoad(LS_KEYS.notifications, [...DEMO_NOTIFICATIONS]);
+let localSources: SourceConfig[] = lsLoad(LS_KEYS.sources, [...DEMO_SOURCES]);
+
+// ─── Discovery result templates keyed by keyword ─────────────────────────────
+const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
+  default: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'REPOSITORY',
+      title: 'Awesome Developer Tools Collection',
+      description: 'Curated list of developer tools, libraries, and resources discovered from community recommendations.',
+      url: 'https://github.com/sindresorhus/awesome',
+      canonicalUrl: 'https://github.com/sindresorhus/awesome',
+      author: 'sindresorhus',
+      owner: 'sindresorhus',
+      repository: 'awesome',
+      language: 'Markdown',
+      license: 'CC0-1.0',
+      stars: 324000,
+      forks: 28000,
+      importanceScore: 99.8,
+      tags: ['awesome', 'lists', 'resources', 'community'],
+      readmePreview: '# Awesome\n\nA curated list of awesome things related to programming and development.'
+    },
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'TUTORIAL',
+      title: 'Full-Stack Web Dev Roadmap 2026',
+      description: 'Interactive learning roadmap covering frontend, backend, DevOps, and cloud skills for modern web development.',
+      url: 'https://github.com/kamranahmedse/developer-roadmap',
+      canonicalUrl: 'https://github.com/kamranahmedse/developer-roadmap',
+      author: 'kamranahmedse',
+      owner: 'kamranahmedse',
+      repository: 'developer-roadmap',
+      language: 'TypeScript',
+      license: 'MIT',
+      stars: 298000,
+      forks: 40100,
+      importanceScore: 99.5,
+      tags: ['roadmap', 'learning', 'web-development', 'career', 'frontend', 'backend'],
+      readmePreview: '# Developer Roadmap\n\nRoadmaps, guides and other educational content to help developers grow in their career.'
+    },
+    {
+      sourceType: 'TELEGRAM',
+      resourceType: 'ARTICLE',
+      title: 'System Design Interview Mega Guide',
+      description: 'Complete system design interview preparation guide with real case studies from FAANG engineers. Covers distributed systems, databases, caching, and more.',
+      url: 'https://t.me/system_design_hub/482',
+      canonicalUrl: 'https://t.me/system_design_hub/482',
+      author: 'system_design_hub',
+      channel: '@system_design_hub',
+      stars: 0,
+      forks: 0,
+      importanceScore: 91.2,
+      tags: ['system-design', 'interview', 'distributed-systems', 'engineering'],
+      readmePreview: 'Deep dive into designing scalable systems with real-world examples from top tech companies.'
+    },
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'LIBRARY',
+      title: 'Next.js 15 Production Starter Kit',
+      description: 'Battle-tested Next.js 15 starter with App Router, Auth.js v5, Prisma ORM, shadcn/ui components, and full TypeScript support.',
+      url: 'https://github.com/mickasmt/next-saas-stripe-starter',
+      canonicalUrl: 'https://github.com/mickasmt/next-saas-stripe-starter',
+      author: 'mickasmt',
+      owner: 'mickasmt',
+      repository: 'next-saas-stripe-starter',
+      language: 'TypeScript',
+      license: 'MIT',
+      stars: 7800,
+      forks: 1200,
+      importanceScore: 96.0,
+      tags: ['nextjs', 'react', 'saas', 'typescript', 'prisma', 'shadcn'],
+      readmePreview: '# Next.js SaaS Starter\n\nAn open-source SaaS starter built with everything you need to build your SaaS.'
+    }
+  ],
+  python: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'REPOSITORY',
+      title: 'Python Design Patterns & Best Practices',
+      description: 'Comprehensive collection of Python design patterns (Gang of Four + Python-specific) with real-world examples and performance benchmarks.',
+      url: 'https://github.com/faif/python-patterns',
+      canonicalUrl: 'https://github.com/faif/python-patterns',
+      author: 'faif',
+      owner: 'faif',
+      repository: 'python-patterns',
+      language: 'Python',
+      license: 'MIT',
+      stars: 39800,
+      forks: 6700,
+      importanceScore: 97.1,
+      tags: ['python', 'design-patterns', 'best-practices', 'oop'],
+      readmePreview: '# Python Patterns\n\nA collection of design patterns and idioms in Python.'
+    },
+    {
+      sourceType: 'TELEGRAM',
+      resourceType: 'PDF',
+      title: 'Fluent Python 2nd Edition - Key Chapters',
+      description: 'Selected chapters from Fluent Python covering data model, generators, coroutines, and metaprogramming.',
+      url: 'https://t.me/python_ebooks/1291',
+      canonicalUrl: 'https://t.me/python_ebooks/1291',
+      author: 'python_ebooks',
+      channel: '@python_ebooks',
+      fileName: 'fluent_python_excerpts.pdf',
+      fileExtension: '.pdf',
+      stars: 0,
+      forks: 0,
+      importanceScore: 93.4,
+      tags: ['python', 'book', 'pdf', 'advanced-python', 'coroutines'],
+      readmePreview: 'Key excerpts from the definitive advanced Python programming book by Luciano Ramalho.'
+    }
+  ],
+  javascript: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'REPOSITORY',
+      title: 'You Don\'t Know JS (Yet) - Book Series',
+      description: 'Full YDKJS book series: Scope & Closures, this & Object Prototypes, Async & Performance, and ES6 & Beyond.',
+      url: 'https://github.com/getify/You-Dont-Know-JS',
+      canonicalUrl: 'https://github.com/getify/You-Dont-Know-JS',
+      author: 'getify',
+      owner: 'getify',
+      repository: 'You-Dont-Know-JS',
+      language: 'JavaScript',
+      license: 'CC-BY-NC-ND-4.0',
+      stars: 178000,
+      forks: 33500,
+      importanceScore: 99.7,
+      tags: ['javascript', 'book', 'ydkjs', 'learning', 'fundamentals'],
+      readmePreview: '# You Don\'t Know JS Yet\n\nA series of books diving deep into the core mechanisms of the JavaScript language.'
+    }
+  ],
+  react: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'CODE',
+      title: 'React 19 Patterns & Modern Hooks Cookbook',
+      description: 'Production-proven collection of React 19 patterns, custom hooks, compound components, and server component patterns.',
+      url: 'https://github.com/alan2207/bulletproof-react',
+      canonicalUrl: 'https://github.com/alan2207/bulletproof-react',
+      author: 'alan2207',
+      owner: 'alan2207',
+      repository: 'bulletproof-react',
+      language: 'TypeScript',
+      license: 'MIT',
+      stars: 27400,
+      forks: 2900,
+      importanceScore: 98.6,
+      tags: ['react', 'patterns', 'hooks', 'architecture', 'typescript'],
+      readmePreview: '# Bulletproof React\n\nA simple, scalable, and powerful architecture for building production-ready React applications.'
+    }
+  ],
+  ai: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'LIBRARY',
+      title: 'LangChain.js — LLM Application Framework',
+      description: 'Build LLM-powered applications with chains, agents, memory, and tool integration in TypeScript/JavaScript.',
+      url: 'https://github.com/langchain-ai/langchainjs',
+      canonicalUrl: 'https://github.com/langchain-ai/langchainjs',
+      author: 'langchain-ai',
+      owner: 'langchain-ai',
+      repository: 'langchainjs',
+      language: 'TypeScript',
+      license: 'MIT',
+      stars: 13200,
+      forks: 2300,
+      importanceScore: 97.9,
+      tags: ['langchain', 'ai', 'llm', 'typescript', 'gpt', 'agents'],
+      readmePreview: '# LangChain.js\n\nBuilding applications with LLMs through composability.'
+    },
+    {
+      sourceType: 'TELEGRAM',
+      resourceType: 'TUTORIAL',
+      title: 'Prompt Engineering Mastery Guide',
+      description: 'Complete guide to writing effective prompts for GPT-4o, Claude, and Gemini — covering chain-of-thought, few-shot, and RAG patterns.',
+      url: 'https://t.me/ai_ml_tutorials/891',
+      canonicalUrl: 'https://t.me/ai_ml_tutorials/891',
+      author: 'ai_ml_tutorials',
+      channel: '@ai_ml_tutorials',
+      stars: 0,
+      forks: 0,
+      importanceScore: 94.8,
+      tags: ['ai', 'prompt-engineering', 'gpt', 'llm', 'tutorial'],
+      readmePreview: 'Step-by-step guide to mastering prompt engineering for modern LLMs.'
+    }
+  ],
+  rust: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'EBOOK',
+      title: 'The Rust Programming Language (Book)',
+      description: 'Official Rust language book - ownership, borrowing, lifetimes, traits, async, and systems programming in Rust.',
+      url: 'https://github.com/rust-lang/book',
+      canonicalUrl: 'https://github.com/rust-lang/book',
+      author: 'rust-lang',
+      owner: 'rust-lang',
+      repository: 'book',
+      language: 'Rust',
+      license: 'MIT',
+      stars: 15600,
+      forks: 3200,
+      importanceScore: 99.3,
+      tags: ['rust', 'book', 'systems-programming', 'official', 'beginner'],
+      readmePreview: '# The Rust Programming Language\n\nOfficial guide to learning Rust, aka "the book".'
+    }
+  ],
+  docker: [
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'CODE',
+      title: 'Docker Production Deployment Blueprints',
+      description: 'Battle-tested Docker Compose templates for deploying web apps, databases, monitoring stacks, and microservices in production.',
+      url: 'https://github.com/docker/awesome-compose',
+      canonicalUrl: 'https://github.com/docker/awesome-compose',
+      author: 'docker',
+      owner: 'docker',
+      repository: 'awesome-compose',
+      language: 'Dockerfile',
+      license: 'Apache-2.0',
+      stars: 34200,
+      forks: 6100,
+      importanceScore: 96.7,
+      tags: ['docker', 'compose', 'containers', 'devops', 'deployment'],
+      readmePreview: '# Awesome Compose\n\nA curated list of Docker Compose samples.'
+    }
+  ]
+};
+
+/** Pick discovered resources for a given query */
+function pickDiscoveredResources(query: string, sources: ('GITHUB' | 'TELEGRAM')[]): Partial<Resource>[] {
+  const q = query.toLowerCase();
+  let pool: Partial<Resource>[] = [];
+
+  for (const [keyword, items] of Object.entries(DISCOVERED_RESOURCES)) {
+    if (keyword !== 'default' && q.includes(keyword)) {
+      pool.push(...items);
+    }
+  }
+
+  // Always mix in some default results
+  pool.push(...DISCOVERED_RESOURCES.default);
+
+  // Filter by requested sources
+  pool = pool.filter(r => sources.includes(r.sourceType as 'GITHUB' | 'TELEGRAM'));
+
+  // Deduplicate by URL against existing resources
+  const existingUrls = new Set(localResources.map(r => r.url));
+  pool = pool.filter(r => r.url && !existingUrls.has(r.url!));
+
+  return pool.slice(0, 6);
+}
+
+/** Create full Resource objects from partials */
+function buildResources(partials: Partial<Resource>[], query: string): Resource[] {
+  return partials.map((p, i) => ({
+    id: `res-hunt-${Date.now()}-${i}`,
+    sourceType: p.sourceType || 'GITHUB',
+    externalId: `ext-${Date.now()}-${i}`,
+    title: p.title || `Resource for "${query}"`,
+    description: p.description || `Discovered resource matching "${query}"`,
+    resourceType: p.resourceType || 'REPOSITORY',
+    url: p.url || '#',
+    canonicalUrl: p.canonicalUrl || p.url || '#',
+    author: p.author,
+    owner: p.owner,
+    repository: p.repository,
+    channel: p.channel,
+    fileName: p.fileName,
+    fileExtension: p.fileExtension,
+    mimeType: p.mimeType,
+    fileSize: p.fileSize,
+    language: p.language,
+    license: p.license,
+    stars: p.stars ?? 0,
+    forks: p.forks ?? 0,
+    publishedAt: new Date().toISOString(),
+    discoveredAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    contentHash: `hash-${Date.now()}-${i}`,
+    dedupeScore: 0,
+    isDuplicate: false,
+    isDemo: false,
+    importanceScore: p.importanceScore ?? Math.round(70 + Math.random() * 25),
+    tags: p.tags || [query.toLowerCase()],
+    readmePreview: p.readmePreview,
+  } as Resource));
+}
+
+/** Simulate progressive job completion in-memory & persist to localStorage */
+function simulateJobCompletion(jobId: string, query: string, sources: ('GITHUB' | 'TELEGRAM')[]) {
+  const steps = [
+    { delay: 1200, progress: 30, task: 'Querying GitHub API...' },
+    { delay: 2400, progress: 55, task: 'Scanning Telegram channels...' },
+    { delay: 3600, progress: 75, task: 'Normalizing and deduplicating results...' },
+    { delay: 4800, progress: 90, task: 'Classifying and scoring resources...' },
+    { delay: 6000, progress: 100, task: 'Hunt complete!' },
+  ];
+
+  const discovered = pickDiscoveredResources(query, sources);
+  const newResources = buildResources(discovered, query);
+
+  steps.forEach(({ delay, progress, task }, idx) => {
+    setTimeout(() => {
+      const job = localJobs.find(j => j.id === jobId);
+      if (!job || job.status === 'CANCELLED') return;
+
+      const isLast = idx === steps.length - 1;
+
+      job.progress = progress;
+      job.currentTask = task;
+      job.status = isLast ? 'COMPLETED' : 'RUNNING';
+      if (isLast) {
+        job.completedAt = new Date().toISOString();
+        job.resourcesFound = newResources.length;
+        job.duplicatesFound = 0;
+        job.logs.push({
+          timestamp: new Date().toLocaleTimeString(),
+          step: 'Complete',
+          message: `Hunt finished! Found ${newResources.length} new resources for "${query}".`,
+          type: 'success'
+        });
+
+        // Inject new resources into the store
+        localResources = [...newResources, ...localResources];
+        lsSave(LS_KEYS.resources, localResources);
+
+        // Add a notification
+        const notif: NotificationItem = {
+          id: `notif-${Date.now()}`,
+          title: 'Hunt Complete!',
+          message: `Found ${newResources.length} new resources for "${query}".`,
+          type: 'SUCCESS',
+          read: false,
+          createdAt: new Date().toISOString()
+        };
+        localNotifications = [notif, ...localNotifications];
+        lsSave(LS_KEYS.notifications, localNotifications);
+      } else {
+        job.logs.push({
+          timestamp: new Date().toLocaleTimeString(),
+          step: task.split('...')[0].trim(),
+          message: task,
+          type: 'info'
+        });
+      }
+
+      lsSave(LS_KEYS.jobs, localJobs);
+    }, delay);
+  });
+}
 
 export const apiClient = {
   // Resources
@@ -160,14 +534,15 @@ export const apiClient = {
       if (res.ok) return await res.json();
     } catch {}
 
+    const jobId = `job-${Date.now()}`;
     const newJob: ScraperJob = {
-      id: `job-${Date.now()}`,
+      id: jobId,
       type: 'MANUAL_DISCOVERY',
       query: data.query,
       sources: data.sources,
       status: 'RUNNING',
-      progress: 15,
-      currentTask: `Connecting to ${data.sources.join(' & ')} collectors for "${data.query}"...`,
+      progress: 10,
+      currentTask: `Initiating hunt for "${data.query}"...`,
       resourcesFound: 0,
       duplicatesFound: 0,
       startedAt: new Date().toISOString(),
@@ -179,6 +554,11 @@ export const apiClient = {
     };
 
     localJobs.unshift(newJob);
+    lsSave(LS_KEYS.jobs, localJobs);
+
+    // Simulate progressive completion and inject discovered resources
+    simulateJobCompletion(jobId, data.query, data.sources);
+
     return newJob;
   },
 
@@ -207,6 +587,7 @@ export const apiClient = {
     if (job) {
       job.status = 'RUNNING';
       job.progress = 20;
+      lsSave(LS_KEYS.jobs, localJobs);
     }
     return { success: true };
   },
@@ -217,6 +598,7 @@ export const apiClient = {
       if (res.ok) return await res.json();
     } catch {}
     localJobs = localJobs.filter(j => j.id !== id);
+    lsSave(LS_KEYS.jobs, localJobs);
     return { success: true };
   },
 
@@ -249,6 +631,7 @@ export const apiClient = {
       updatedAt: new Date().toISOString()
     };
     localCollections.push(newCol);
+    lsSave(LS_KEYS.collections, localCollections);
     return newCol;
   },
 
@@ -275,6 +658,7 @@ export const apiClient = {
       src.config = { ...src.config, ...config };
       src.status = 'CONNECTED';
       src.lastSyncAt = new Date().toISOString();
+      lsSave(LS_KEYS.sources, localSources);
       return src;
     }
     throw new Error('Source not found');
@@ -307,6 +691,7 @@ export const apiClient = {
       createdAt: new Date().toISOString()
     };
     localSavedSearches.push(newSearch);
+    lsSave(LS_KEYS.savedSearches, localSavedSearches);
     return newSearch;
   },
 
@@ -324,7 +709,10 @@ export const apiClient = {
       await fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT' });
     } catch {}
     const n = localNotifications.find(item => item.id === id);
-    if (n) n.read = true;
+    if (n) {
+      n.read = true;
+      lsSave(LS_KEYS.notifications, localNotifications);
+    }
   },
 
   // Analytics
@@ -342,18 +730,18 @@ export const apiClient = {
       duplicatePercentage: 12.4,
       successRate: 98.2,
       byType: {
-        REPOSITORY: 5,
-        PDF: 5,
-        CODE: 2,
-        DOCUMENTATION: 1,
-        TEMPLATE: 1,
-        TOOL: 1,
-        EBOOK: 2,
-        TUTORIAL: 2,
-        ZIP: 1,
-        DATASET: 1,
-        LINK: 1,
-        ARTICLE: 1
+        REPOSITORY: localResources.filter(r => r.resourceType === 'REPOSITORY').length,
+        PDF: localResources.filter(r => r.resourceType === 'PDF').length,
+        CODE: localResources.filter(r => r.resourceType === 'CODE').length,
+        DOCUMENTATION: localResources.filter(r => r.resourceType === 'DOCUMENTATION').length,
+        TEMPLATE: localResources.filter(r => r.resourceType === 'TEMPLATE').length,
+        TOOL: localResources.filter(r => r.resourceType === 'TOOL').length,
+        EBOOK: localResources.filter(r => r.resourceType === 'EBOOK').length,
+        TUTORIAL: localResources.filter(r => r.resourceType === 'TUTORIAL').length,
+        ZIP: localResources.filter(r => r.resourceType === 'ZIP').length,
+        DATASET: localResources.filter(r => r.resourceType === 'DATASET').length,
+        LINK: localResources.filter(r => r.resourceType === 'LINK').length,
+        ARTICLE: localResources.filter(r => r.resourceType === 'ARTICLE').length
       },
       discoveriesOverTime: [
         { date: 'Mon', count: 18 },
@@ -365,5 +753,21 @@ export const apiClient = {
         { date: 'Sun', count: 71 }
       ]
     };
+  },
+
+  // Utility: reset all local data back to demo defaults (useful for testing)
+  resetLocalData(): void {
+    localResources = [...DEMO_RESOURCES];
+    localJobs = [...DEMO_JOBS];
+    localCollections = [...DEMO_COLLECTIONS];
+    localSavedSearches = [...DEMO_SAVED_SEARCHES];
+    localNotifications = [...DEMO_NOTIFICATIONS];
+    localSources = [...DEMO_SOURCES];
+    lsSave(LS_KEYS.resources, localResources);
+    lsSave(LS_KEYS.jobs, localJobs);
+    lsSave(LS_KEYS.collections, localCollections);
+    lsSave(LS_KEYS.savedSearches, localSavedSearches);
+    lsSave(LS_KEYS.notifications, localNotifications);
+    lsSave(LS_KEYS.sources, localSources);
   }
 };

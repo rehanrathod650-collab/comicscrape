@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Compass,
   Send,
@@ -13,6 +13,7 @@ import { GithubIcon } from '../components/common/Icons';
 import { SourceType, ScraperJob } from '../types';
 import { SpeechBubble } from '../components/comic/SpeechBubble';
 import { ComicBadge } from '../components/comic/ComicBadge';
+import { apiClient } from '../api/client';
 
 export interface DiscoverPageProps {
   onStartDiscovery: (query: string, sources: SourceType[]) => Promise<ScraperJob>;
@@ -29,6 +30,7 @@ export const DiscoverPage: React.FC<DiscoverPageProps> = ({
   const [selectedSources, setSelectedSources] = useState<SourceType[]>(['GITHUB', 'TELEGRAM']);
   const [isHunting, setIsHunting] = useState(false);
   const [liveJob, setLiveJob] = useState<ScraperJob | null>(activeJob);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const exampleTopics = [
     'Python automation',
@@ -40,6 +42,27 @@ export const DiscoverPage: React.FC<DiscoverPageProps> = ({
     'Rust cli tools',
     'System design notes'
   ];
+
+  // Poll for real job status updates from client store
+  useEffect(() => {
+    if (liveJob && liveJob.status === 'RUNNING') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        const updated = await apiClient.getJobById(liveJob.id);
+        if (updated) {
+          setLiveJob(updated);
+          if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
+            setIsHunting(false);
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        }
+      }, 1500);
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [liveJob?.id, liveJob?.status]);
 
   const toggleSource = (source: SourceType) => {
     if (selectedSources.includes(source)) {
@@ -54,57 +77,16 @@ export const DiscoverPage: React.FC<DiscoverPageProps> = ({
   const handleStartHunt = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!query.trim()) return;
-
     setIsHunting(true);
-
     try {
       const job = await onStartDiscovery(query, selectedSources);
       setLiveJob(job);
-
-      // Simulate step progression for responsive interactive visual feedback
-      let step = 1;
-      const interval = setInterval(() => {
-        setLiveJob(prev => {
-          if (!prev) return null;
-          const nextProgress = Math.min(prev.progress + 20, 100);
-
-          let currentTask = prev.currentTask;
-          const newLogs = [...prev.logs];
-          const time = new Date().toLocaleTimeString();
-
-          if (step === 1) {
-            currentTask = 'Querying official GitHub API & scraping authorized channel feeds...';
-            newLogs.push({ timestamp: time, step: 'Fetch', message: 'Discovered 34 candidate items across target sources', type: 'info' });
-          } else if (step === 2) {
-            currentTask = 'Extracting README markdown, file sizes, and media attributes...';
-            newLogs.push({ timestamp: time, step: 'Metadata', message: 'Normalized canonical URLs and tags', type: 'info' });
-          } else if (step === 3) {
-            currentTask = 'Running deduplication engine and confidence similarity scoring...';
-            newLogs.push({ timestamp: time, step: 'Deduplication', message: 'Detected 4 duplicates with score > 0.88; merged canonicals', type: 'success' });
-          } else if (step >= 4) {
-            currentTask = 'Discovery complete! Indexed 30 new resources.';
-            newLogs.push({ timestamp: time, step: 'Saved', message: 'Successfully written to local catalog index', type: 'success' });
-            clearInterval(interval);
-            setIsHunting(false);
-          }
-
-          step++;
-
-          return {
-            ...prev,
-            progress: nextProgress,
-            currentTask,
-            status: nextProgress === 100 ? 'COMPLETED' : 'RUNNING',
-            resourcesFound: 30,
-            duplicatesFound: 4,
-            logs: newLogs
-          };
-        });
-      }, 1200);
     } catch {
       setIsHunting(false);
     }
   };
+
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">

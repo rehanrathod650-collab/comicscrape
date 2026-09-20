@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Resource,
   ScraperJob,
@@ -134,6 +134,38 @@ export const App: React.FC = () => {
     setJobs(prev => [newJob, ...prev]);
     return newJob;
   };
+
+  // Poll for resource/job updates while a discovery is active
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (activeJob && activeJob.status === 'RUNNING') {
+      // Clear any existing poll
+      if (pollRef.current) clearInterval(pollRef.current);
+
+      pollRef.current = setInterval(async () => {
+        // Re-fetch resources from local store (picks up newly injected ones)
+        await fetchResources();
+        // Re-fetch jobs
+        const updatedJobs = await apiClient.getJobs();
+        setJobs(updatedJobs);
+        // Re-fetch notifications
+        const updatedNotifs = await apiClient.getNotifications();
+        setNotifications(updatedNotifs);
+        // Check if job has completed
+        const updatedJob = updatedJobs.find(j => j.id === activeJob.id);
+        if (updatedJob && (updatedJob.status === 'COMPLETED' || updatedJob.status === 'FAILED')) {
+          setActiveJob(updatedJob);
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      }, 2500);
+    }
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [activeJob?.id, activeJob?.status]);
+
 
   const handleSaveResource = async (resource: Resource) => {
     await apiClient.saveResource(resource.id);
