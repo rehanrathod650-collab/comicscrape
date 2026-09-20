@@ -1,0 +1,124 @@
+/* Comic Styling & Micro-interactions */
+
+/* Halftone subtle dot pattern */
+.bg-halftone {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.08) 1.5px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+.dark .bg-halftone {
+  background-image: radial-gradient(rgba(241, 245, 249, 0.06) 1.5px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+/* Comic card with signature drop-ink shadow */
+.comic-card {
+  border: 2.5px solid #0f172a;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0px 0px #0f172a;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .comic-card {
+  border: 2.5px solid #334155;
+  box-shadow: 3px 3px 0px 0px #000000;
+}
+
+.comic-card-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0px 0px #0f172a;
+}
+
+.dark .comic-card-hover:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0px 0px #000000;
+}
+
+/* Comic interactive button */
+.comic-btn {
+  border: 2.5px solid #0f172a;
+  box-shadow: 3px 3px 0px 0px #0f172a;
+  font-weight: 700;
+  transition: all 0.1s ease-in-out;
+}
+
+.comic-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #0f172a;
+}
+
+.comic-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px 0px #0f172a;
+}
+
+.dark .comic-btn {
+  border-color: #e2e8f0;
+  box-shadow: 3px 3px 0px 0px #000000;
+}
+
+.dark .comic-btn:hover {
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.dark .comic-btn:active {
+  box-shadow: 1px 1px 0px 0px #000000;
+}
+
+/* Speech Bubble */
+.speech-bubble {
+  position: relative;
+  border: 2.5px solid #0f172a;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 3px 3px 0px 0px #0f172a;
+}
+
+.dark .speech-bubble {
+  border-color: #475569;
+  background: #1e293b;
+  box-shadow: 3px 3px 0px 0px #000000;
+}
+
+.speech-bubble-tail-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 24px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid #0f172a;
+}
+
+.dark .speech-bubble-tail-bottom::after {
+  border-top-color: #475569;
+}
+
+.speech-bubble-tail-bottom::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 26px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid white;
+  z-index: 1;
+}
+
+.dark .speech-bubble-tail-bottom::before {
+  border-top-color: #1e293b;
+}
+
+/* Starburst badge animation */
+@keyframes pulse-subtle {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.comic-pulse {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}

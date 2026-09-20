@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+}
+
+model Source {
+  id            String     @id @default(cuid())
+  type          String     // GITHUB or TELEGRAM
+  name          String
+  config        String?    // JSON string for provider settings
+  status        String     @default("CONNECTED") // CONNECTED, DISCONNECTED, ERROR
+  lastSyncAt    DateTime?
+  resourceCount Int        @default(0)
+  lastError     String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  resources     Resource[]
+}
+
+model Resource {
+  id              String               @id @default(cuid())
+  sourceType      String               // GITHUB or TELEGRAM
+  sourceId        String?
+  source          Source?              @relation(fields: [sourceId], references: [id])
+  externalId      String
+  title           String
+  description     String?
+  resourceType    String               // REPOSITORY, CODE, DOCUMENTATION, TUTORIAL, ARTICLE, PDF, EBOOK, etc.
+  url             String
+  canonicalUrl    String
+  author          String?
+  owner           String?
+  repository      String?
+  channel         String?
+  fileName        String?
+  fileExtension   String?
+  mimeType        String?
+  fileSize        Int?
+  language        String?
+  license         String?
+  stars           Int                  @default(0)
+  forks           Int                  @default(0)
+  publishedAt     DateTime?
+  discoveredAt    DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  contentHash     String
+  dedupeScore     Float                @default(0.0)
+  duplicateOfId   String?
+  isDuplicate     Boolean              @default(false)
+  isDemo          Boolean              @default(false)
+  importanceScore Float                @default(0.0)
+  tags            String?              // Comma-separated or JSON string
+  metadata        String?              // Provider-specific JSON string
+  readmePreview   String?
+  collections     CollectionResource[]
+
+  @@index([canonicalUrl])
+  @@index([contentHash])
+  @@index([sourceType])
+  @@index([resourceType])
+  @@index([language])
+  @@index([stars])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Collection {
+  id            String               @id @default(cuid())
+  name          String
+  description   String?
+  color         String?              @default("#facc15")
+  icon          String?              @default("Folder")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  resources     CollectionResource[]
+}
+
+model CollectionResource {
+  collectionId String
+  resourceId   String
+  addedAt      DateTime   @default(now())
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  resource     Resource   @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, resourceId])
+}
+
+model ScraperJob {
+  id              String    @id @default(cuid())
+  type            String    // MANUAL_DISCOVERY, SCHEDULED_DISCOVERY, etc.
+  query           String
+  sources         String    // Comma-separated e.g. "GITHUB,TELEGRAM"
+  status          String    @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED
+  progress        Int       @default(0)
+  currentTask     String    @default("Pending in queue...")
+  resourcesFound  Int       @default(0)
+  duplicatesFound Int       @default(0)
+  error           String?
+  logs            String?   // JSON array of log steps
+  schedule        String?   // HOURLY, DAILY, WEEKLY, cron
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+model SavedSearch {
+  id          String    @id @default(cuid())
+  query       String
+  sources     String    // Comma-separated
+  frequency   String    @default("DAILY")
+  notifyOnNew Boolean   @default(true)
+  lastRunAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  details   String?  // JSON string
+  timestamp DateTime @default(now())
+}

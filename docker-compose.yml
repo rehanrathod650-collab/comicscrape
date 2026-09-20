@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Production storage)
+  postgres:
+    image: postgres:16-alpine
+    container_name: comicscrape-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: comicscrape
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis (Job Queue & Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: comicscrape-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # ComicScrape Full-Stack Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comicscrape-app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: "postgresql://postgres:password@postgres:5432/comicscrape?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      SESSION_SECRET: ${SESSION_SECRET:-comic-scrape-secret-production}
+    ports:
+      - "3001:3001"
+
+volumes:
+  postgres_data:
+  redis_data:
