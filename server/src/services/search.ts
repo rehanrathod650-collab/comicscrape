@@ -68,14 +68,28 @@ export class SearchService {
     // Multi-field text search
     if (params.search && params.search.trim()) {
       const q = params.search.trim();
-      where.OR = [
-        { title: { contains: q } },
-        { description: { contains: q } },
-        { tags: { contains: q } },
-        { repository: { contains: q } },
-        { channel: { contains: q } },
-        { author: { contains: q } }
-      ];
+      const terms = q.split(/\s+/).filter(t => t.length > 1);
+
+      if (terms.length > 1) {
+        where.OR = [
+          { title: { contains: q } },
+          { description: { contains: q } },
+          { tags: { contains: q } },
+          ...terms.map(term => ({ title: { contains: term } })),
+          ...terms.map(term => ({ description: { contains: term } })),
+          ...terms.map(term => ({ tags: { contains: term } })),
+          ...terms.map(term => ({ repository: { contains: term } }))
+        ];
+      } else {
+        where.OR = [
+          { title: { contains: q } },
+          { description: { contains: q } },
+          { tags: { contains: q } },
+          { repository: { contains: q } },
+          { channel: { contains: q } },
+          { author: { contains: q } }
+        ];
+      }
     }
 
     // Sorting

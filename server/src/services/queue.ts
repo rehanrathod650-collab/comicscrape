@@ -136,6 +136,9 @@ export class JobQueue {
         continue;
       }
 
+      const queryTerms = job.query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+      const allTags = Array.from(new Set([...candidate.tags, job.query.toLowerCase(), ...queryTerms])).join(',');
+
       // Persist new unique resource
       await prisma.resource.create({
         data: {
@@ -165,7 +168,7 @@ export class JobQueue {
           isDuplicate: false,
           isDemo: false,
           importanceScore: candidate.importanceScore || 75.0,
-          tags: candidate.tags.join(','),
+          tags: allTags,
           readmePreview: candidate.readmePreview
         }
       });
@@ -180,6 +183,65 @@ export class JobQueue {
       });
 
       savedCount++;
+    }
+
+    // If all candidates on page 1 were already indexed, fetch page 2 to discover fresh resources
+    if (savedCount === 0 && sources.includes('GITHUB')) {
+      await this.appendLog(jobId, 'Deeper Search', 'Top candidates already indexed. Scanning page 2 for fresh repositories...');
+      try {
+        const moreCandidates = await githubConnector.search(job.query, { page: 2, limit: 25 });
+        for (const candidate of moreCandidates) {
+          const dedupeResult = Deduplicator.evaluateDuplicate(candidate, existingResources);
+          if (dedupeResult.isDuplicate) {
+            duplicateCount++;
+            continue;
+          }
+          const queryTerms = job.query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+          const allTags = Array.from(new Set([...candidate.tags, job.query.toLowerCase(), ...queryTerms])).join(',');
+
+          await prisma.resource.create({
+            data: {
+              sourceType: candidate.sourceType,
+              externalId: candidate.externalId,
+              title: candidate.title,
+              description: candidate.description,
+              resourceType: candidate.resourceType,
+              url: candidate.url,
+              canonicalUrl: candidate.canonicalUrl,
+              author: candidate.author,
+              owner: candidate.owner,
+              repository: candidate.repository,
+              channel: candidate.channel,
+              fileName: candidate.fileName,
+              fileExtension: candidate.fileExtension,
+              mimeType: candidate.mimeType,
+              fileSize: candidate.fileSize,
+              language: candidate.language,
+              license: candidate.license,
+              stars: candidate.stars,
+              forks: candidate.forks,
+              publishedAt: candidate.publishedAt,
+              discoveredAt: candidate.discoveredAt,
+              contentHash: candidate.contentHash,
+              dedupeScore: dedupeResult.confidenceScore,
+              isDuplicate: false,
+              isDemo: false,
+              importanceScore: candidate.importanceScore || 75.0,
+              tags: allTags,
+              readmePreview: candidate.readmePreview
+            }
+          });
+
+          existingResources.push({
+            id: `batch_${savedCount}`,
+            canonicalUrl: candidate.canonicalUrl,
+            contentHash: candidate.contentHash,
+            title: candidate.title,
+            externalId: candidate.externalId
+          });
+          savedCount++;
+        }
+      } catch {}
     }
 
     await this.appendLog(

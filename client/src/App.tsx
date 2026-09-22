@@ -231,7 +231,7 @@ export const App: React.FC = () => {
         <DiscoverPage
           onStartDiscovery={handleStartDiscovery}
           onNavigateToResources={q => {
-            setFilters(prev => ({ ...prev, search: q, page: 1 }));
+            setFilters(prev => ({ ...prev, search: q, sortBy: 'newest', page: 1 }));
             setActiveTab('resources');
           }}
           activeJob={activeJob}
