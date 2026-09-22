@@ -9,14 +9,16 @@ export class TelegramConnector implements IConnector {
   readonly name = 'Telegram Channel Connector';
   readonly sourceType: SourceType = 'TELEGRAM';
 
-  // Curated list of public developer & resource channels for discovery
+  // Curated list of real, active public developer & resource channels for discovery
   private defaultChannels = [
-    'PythonResourcesDaily',
-    'AIDataScienceHub',
-    'CyberSecNotesArchive',
+    'thedevs',
+    'golang_news',
+    'cs_resources',
+    'python2day',
     'TechInterviewPrep',
-    'DevOpsVault',
-    'FrontendDevelopersFeed'
+    'cybersecurity_hub',
+    'programmers_notes',
+    'dev_pulse'
   ];
 
   constructor(private botToken?: string, private channels?: string[]) {
@@ -29,18 +31,26 @@ export class TelegramConnector implements IConnector {
    * Search across public & authorized channels
    */
   async search(query: string, options?: ConnectorSearchOptions): Promise<NormalizedResource[]> {
-    const q = query.toLowerCase();
+    const q = query.toLowerCase().trim();
+    const queryTerms = q.split(/\s+/).filter(t => t.length > 1);
     const targetChannels = options?.channel ? [options.channel] : this.defaultChannels;
     const results: NormalizedResource[] = [];
 
     for (const ch of targetChannels) {
       try {
         const channelItems = await this.scrapeChannelFeed(ch);
-        const matched = channelItems.filter(item =>
-          item.title.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q) ||
-          item.tags.some(t => t.toLowerCase().includes(q))
-        );
+        const matched = channelItems.filter(item => {
+          if (!q) return true;
+          const haystack = (
+            item.title + ' ' +
+            item.description + ' ' +
+            (item.fileName || '') + ' ' +
+            item.tags.join(' ')
+          ).toLowerCase();
+
+          if (haystack.includes(q)) return true;
+          return queryTerms.length > 0 && queryTerms.some(term => haystack.includes(term));
+        });
         results.push(...matched);
       } catch (err) {
         // Continue to other channels if one fails

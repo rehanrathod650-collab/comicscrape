@@ -31,7 +31,20 @@ const LS_KEYS = {
 function lsLoad<T>(key: string, fallback: T[]): T[] {
   try {
     const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T[];
+    if (raw) {
+      const parsed = JSON.parse(raw) as T[];
+      // If cached resources contain stale fake demo URLs, invalidate and use fresh real catalog
+      if (key === LS_KEYS.resources && Array.isArray(parsed)) {
+        const hasStaleDemo = (parsed as any[]).some(
+          r => r?.isDemo === true || (r?.url && (r.url.includes('the-comic-dev') || r.url.includes('frontend-heroes') || r.url.includes('mindcraft') || r.url.includes('rust-sec') || r.url.includes('cloud-architects')))
+        );
+        if (hasStaleDemo) {
+          lsSave(key, fallback);
+          return fallback;
+        }
+      }
+      return parsed;
+    }
   } catch {}
   return fallback;
 }
@@ -56,8 +69,8 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
     {
       sourceType: 'GITHUB',
       resourceType: 'REPOSITORY',
-      title: 'Awesome Developer Tools Collection',
-      description: 'Curated list of developer tools, libraries, and resources discovered from community recommendations.',
+      title: 'sindresorhus/awesome',
+      description: 'Curated list of awesome developer tools, libraries, and resources discovered from community recommendations.',
       url: 'https://github.com/sindresorhus/awesome',
       canonicalUrl: 'https://github.com/sindresorhus/awesome',
       author: 'sindresorhus',
@@ -65,8 +78,8 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
       repository: 'awesome',
       language: 'Markdown',
       license: 'CC0-1.0',
-      stars: 324000,
-      forks: 28000,
+      stars: 345000,
+      forks: 29000,
       importanceScore: 99.8,
       tags: ['awesome', 'lists', 'resources', 'community'],
       readmePreview: '# Awesome\n\nA curated list of awesome things related to programming and development.'
@@ -74,7 +87,7 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
     {
       sourceType: 'GITHUB',
       resourceType: 'TUTORIAL',
-      title: 'Full-Stack Web Dev Roadmap 2026',
+      title: 'kamranahmedse/developer-roadmap',
       description: 'Interactive learning roadmap covering frontend, backend, DevOps, and cloud skills for modern web development.',
       url: 'https://github.com/kamranahmedse/developer-roadmap',
       canonicalUrl: 'https://github.com/kamranahmedse/developer-roadmap',
@@ -82,9 +95,9 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
       owner: 'kamranahmedse',
       repository: 'developer-roadmap',
       language: 'TypeScript',
-      license: 'MIT',
-      stars: 298000,
-      forks: 40100,
+      license: 'CC-BY-NC-SA-4.0',
+      stars: 310000,
+      forks: 41200,
       importanceScore: 99.5,
       tags: ['roadmap', 'learning', 'web-development', 'career', 'frontend', 'backend'],
       readmePreview: '# Developer Roadmap\n\nRoadmaps, guides and other educational content to help developers grow in their career.'
@@ -92,79 +105,95 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
     {
       sourceType: 'TELEGRAM',
       resourceType: 'ARTICLE',
-      title: 'System Design Interview Mega Guide',
-      description: 'Complete system design interview preparation guide with real case studies from FAANG engineers. Covers distributed systems, databases, caching, and more.',
-      url: 'https://t.me/system_design_hub/482',
-      canonicalUrl: 'https://t.me/system_design_hub/482',
-      author: 'system_design_hub',
-      channel: '@system_design_hub',
+      title: 'Bookmarkable by Design: URL-Driven State in Web Apps',
+      description: 'Deep dive into eliminating hidden component states by serializing UI filters, pagination, and modals into query parameters.',
+      url: 'https://t.me/thedevs/1150',
+      canonicalUrl: 'https://t.me/thedevs/1150',
+      author: 'thedevs',
+      channel: '@thedevs',
       stars: 0,
       forks: 0,
-      importanceScore: 91.2,
-      tags: ['system-design', 'interview', 'distributed-systems', 'engineering'],
-      readmePreview: 'Deep dive into designing scalable systems with real-world examples from top tech companies.'
+      importanceScore: 92.4,
+      tags: ['frontend', 'web-dev', 'article', 'architecture', 'javascript'],
+      readmePreview: 'Deep dive into designing scalable systems and URL-driven state.'
     },
     {
       sourceType: 'GITHUB',
       resourceType: 'LIBRARY',
-      title: 'Next.js 15 Production Starter Kit',
-      description: 'Battle-tested Next.js 15 starter with App Router, Auth.js v5, Prisma ORM, shadcn/ui components, and full TypeScript support.',
-      url: 'https://github.com/mickasmt/next-saas-stripe-starter',
-      canonicalUrl: 'https://github.com/mickasmt/next-saas-stripe-starter',
-      author: 'mickasmt',
-      owner: 'mickasmt',
-      repository: 'next-saas-stripe-starter',
+      title: 'vercel/next.js',
+      description: 'The React Framework for the Web with App Router, Server Components, and full TypeScript support.',
+      url: 'https://github.com/vercel/next.js',
+      canonicalUrl: 'https://github.com/vercel/next.js',
+      author: 'vercel',
+      owner: 'vercel',
+      repository: 'next.js',
       language: 'TypeScript',
       license: 'MIT',
-      stars: 7800,
-      forks: 1200,
-      importanceScore: 96.0,
-      tags: ['nextjs', 'react', 'saas', 'typescript', 'prisma', 'shadcn'],
-      readmePreview: '# Next.js SaaS Starter\n\nAn open-source SaaS starter built with everything you need to build your SaaS.'
+      stars: 129000,
+      forks: 27000,
+      importanceScore: 99.4,
+      tags: ['nextjs', 'react', 'typescript', 'fullstack', 'ssr'],
+      readmePreview: '# Next.js\n\nThe React framework for modern full-stack web applications.'
     }
   ],
   python: [
     {
       sourceType: 'GITHUB',
-      resourceType: 'REPOSITORY',
-      title: 'Python Design Patterns & Best Practices',
-      description: 'Comprehensive collection of Python design patterns (Gang of Four + Python-specific) with real-world examples and performance benchmarks.',
-      url: 'https://github.com/faif/python-patterns',
-      canonicalUrl: 'https://github.com/faif/python-patterns',
-      author: 'faif',
-      owner: 'faif',
-      repository: 'python-patterns',
+      resourceType: 'LIBRARY',
+      title: 'tiangolo/fastapi',
+      description: 'FastAPI framework, high performance, easy to learn, fast to code, ready for production with automatic OpenAPI documentation.',
+      url: 'https://github.com/tiangolo/fastapi',
+      canonicalUrl: 'https://github.com/tiangolo/fastapi',
+      author: 'tiangolo',
+      owner: 'tiangolo',
+      repository: 'fastapi',
       language: 'Python',
       license: 'MIT',
-      stars: 39800,
-      forks: 6700,
-      importanceScore: 97.1,
-      tags: ['python', 'design-patterns', 'best-practices', 'oop'],
-      readmePreview: '# Python Patterns\n\nA collection of design patterns and idioms in Python.'
+      stars: 79200,
+      forks: 6400,
+      importanceScore: 98.8,
+      tags: ['fastapi', 'python', 'api', 'async', 'pydantic', 'rest'],
+      readmePreview: '# FastAPI\n\nHigh-performance web API framework for Python.'
+    },
+    {
+      sourceType: 'GITHUB',
+      resourceType: 'TOOL',
+      title: 'astral-sh/uv',
+      description: 'An extremely fast Python package and project manager, written in Rust. Drop-in replacement for pip and virtualenv.',
+      url: 'https://github.com/astral-sh/uv',
+      canonicalUrl: 'https://github.com/astral-sh/uv',
+      author: 'astral-sh',
+      owner: 'astral-sh',
+      repository: 'uv',
+      language: 'Rust',
+      license: 'Apache-2.0',
+      stars: 43200,
+      forks: 1300,
+      importanceScore: 97.5,
+      tags: ['uv', 'python', 'rust', 'packaging', 'pip'],
+      readmePreview: '# uv\n\nFast Python package manager.'
     },
     {
       sourceType: 'TELEGRAM',
-      resourceType: 'PDF',
-      title: 'Fluent Python 2nd Edition - Key Chapters',
-      description: 'Selected chapters from Fluent Python covering data model, generators, coroutines, and metaprogramming.',
-      url: 'https://t.me/python_ebooks/1291',
-      canonicalUrl: 'https://t.me/python_ebooks/1291',
-      author: 'python_ebooks',
-      channel: '@python_ebooks',
-      fileName: 'fluent_python_excerpts.pdf',
-      fileExtension: '.pdf',
+      resourceType: 'CODE',
+      title: 'Clearcam: Real-Time Computer Vision & Smart Monitoring with Python',
+      description: 'Python script utility utilizing OpenCV, YOLO object detection, and local RTSP streaming for home security and smart automation.',
+      url: 'https://t.me/python2day/8155',
+      canonicalUrl: 'https://t.me/python2day/8155',
+      author: 'python2day',
+      channel: '@python2day',
       stars: 0,
       forks: 0,
-      importanceScore: 93.4,
-      tags: ['python', 'book', 'pdf', 'advanced-python', 'coroutines'],
-      readmePreview: 'Key excerpts from the definitive advanced Python programming book by Luciano Ramalho.'
+      importanceScore: 92.8,
+      tags: ['python', 'opencv', 'computer-vision', 'automation', 'yolo'],
+      readmePreview: 'Python computer vision automation using OpenCV and YOLO.'
     }
   ],
   javascript: [
     {
       sourceType: 'GITHUB',
-      resourceType: 'REPOSITORY',
-      title: 'You Don\'t Know JS (Yet) - Book Series',
+      resourceType: 'EBOOK',
+      title: 'getify/You-Dont-Know-JS',
       description: 'Full YDKJS book series: Scope & Closures, this & Object Prototypes, Async & Performance, and ES6 & Beyond.',
       url: 'https://github.com/getify/You-Dont-Know-JS',
       canonicalUrl: 'https://github.com/getify/You-Dont-Know-JS',
@@ -175,7 +204,7 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
       license: 'CC-BY-NC-ND-4.0',
       stars: 178000,
       forks: 33500,
-      importanceScore: 99.7,
+      importanceScore: 99.6,
       tags: ['javascript', 'book', 'ydkjs', 'learning', 'fundamentals'],
       readmePreview: '# You Don\'t Know JS Yet\n\nA series of books diving deep into the core mechanisms of the JavaScript language.'
     }
@@ -183,84 +212,105 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
   react: [
     {
       sourceType: 'GITHUB',
+      resourceType: 'LIBRARY',
+      title: 'facebook/react',
+      description: 'The library for web and native user interfaces. Build user interfaces out of declarative components in JavaScript and TypeScript.',
+      url: 'https://github.com/facebook/react',
+      canonicalUrl: 'https://github.com/facebook/react',
+      author: 'facebook',
+      owner: 'facebook',
+      repository: 'react',
+      language: 'JavaScript',
+      license: 'MIT',
+      stars: 231000,
+      forks: 46000,
+      importanceScore: 99.9,
+      tags: ['react', 'javascript', 'ui', 'frontend', 'components'],
+      readmePreview: '# React\n\nDeclarative, component-based library for building user interfaces.'
+    },
+    {
+      sourceType: 'GITHUB',
       resourceType: 'CODE',
-      title: 'React 19 Patterns & Modern Hooks Cookbook',
-      description: 'Production-proven collection of React 19 patterns, custom hooks, compound components, and server component patterns.',
-      url: 'https://github.com/alan2207/bulletproof-react',
-      canonicalUrl: 'https://github.com/alan2207/bulletproof-react',
-      author: 'alan2207',
-      owner: 'alan2207',
-      repository: 'bulletproof-react',
+      title: 'shadcn-ui/ui',
+      description: 'Beautifully designed components that you can copy and paste into your apps. Accessible, customizable, open source.',
+      url: 'https://github.com/shadcn-ui/ui',
+      canonicalUrl: 'https://github.com/shadcn-ui/ui',
+      author: 'shadcn-ui',
+      owner: 'shadcn-ui',
+      repository: 'ui',
       language: 'TypeScript',
       license: 'MIT',
-      stars: 27400,
-      forks: 2900,
+      stars: 76000,
+      forks: 6900,
       importanceScore: 98.6,
-      tags: ['react', 'patterns', 'hooks', 'architecture', 'typescript'],
-      readmePreview: '# Bulletproof React\n\nA simple, scalable, and powerful architecture for building production-ready React applications.'
+      tags: ['shadcn', 'ui', 'components', 'radix-ui', 'tailwind', 'react'],
+      readmePreview: '# shadcn/ui\n\nAccessible and customizable components.'
     }
   ],
   ai: [
     {
       sourceType: 'GITHUB',
       resourceType: 'LIBRARY',
-      title: 'LangChain.js — LLM Application Framework',
-      description: 'Build LLM-powered applications with chains, agents, memory, and tool integration in TypeScript/JavaScript.',
-      url: 'https://github.com/langchain-ai/langchainjs',
-      canonicalUrl: 'https://github.com/langchain-ai/langchainjs',
+      title: 'langchain-ai/langchain',
+      description: '🦜🔗 Build context-aware reasoning applications with LangChain. Flexible abstractions and AI toolkit for LLM workflows.',
+      url: 'https://github.com/langchain-ai/langchain',
+      canonicalUrl: 'https://github.com/langchain-ai/langchain',
       author: 'langchain-ai',
       owner: 'langchain-ai',
-      repository: 'langchainjs',
-      language: 'TypeScript',
+      repository: 'langchain',
+      language: 'Python',
       license: 'MIT',
-      stars: 13200,
-      forks: 2300,
-      importanceScore: 97.9,
-      tags: ['langchain', 'ai', 'llm', 'typescript', 'gpt', 'agents'],
-      readmePreview: '# LangChain.js\n\nBuilding applications with LLMs through composability.'
+      stars: 98500,
+      forks: 15800,
+      importanceScore: 99.2,
+      tags: ['langchain', 'ai', 'llm', 'python', 'agents', 'rag'],
+      readmePreview: '# LangChain\n\nFramework for developing applications powered by LLMs.'
     },
     {
-      sourceType: 'TELEGRAM',
-      resourceType: 'TUTORIAL',
-      title: 'Prompt Engineering Mastery Guide',
-      description: 'Complete guide to writing effective prompts for GPT-4o, Claude, and Gemini — covering chain-of-thought, few-shot, and RAG patterns.',
-      url: 'https://t.me/ai_ml_tutorials/891',
-      canonicalUrl: 'https://t.me/ai_ml_tutorials/891',
-      author: 'ai_ml_tutorials',
-      channel: '@ai_ml_tutorials',
-      stars: 0,
-      forks: 0,
-      importanceScore: 94.8,
-      tags: ['ai', 'prompt-engineering', 'gpt', 'llm', 'tutorial'],
-      readmePreview: 'Step-by-step guide to mastering prompt engineering for modern LLMs.'
+      sourceType: 'GITHUB',
+      resourceType: 'TOOL',
+      title: 'AUTOMATIC1111/stable-diffusion-webui',
+      description: 'Stable Diffusion web UI for generative image models with browser interface based on Gradio.',
+      url: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui',
+      canonicalUrl: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui',
+      author: 'AUTOMATIC1111',
+      owner: 'AUTOMATIC1111',
+      repository: 'stable-diffusion-webui',
+      language: 'Python',
+      license: 'AGPL-3.0',
+      stars: 142000,
+      forks: 27500,
+      importanceScore: 99.1,
+      tags: ['ai', 'stable-diffusion', 'image-generation', 'gradio', 'python'],
+      readmePreview: '# Stable Diffusion WebUI\n\nA browser interface based on Gradio for Stable Diffusion.'
     }
   ],
   rust: [
     {
       sourceType: 'GITHUB',
-      resourceType: 'EBOOK',
-      title: 'The Rust Programming Language (Book)',
-      description: 'Official Rust language book - ownership, borrowing, lifetimes, traits, async, and systems programming in Rust.',
-      url: 'https://github.com/rust-lang/book',
-      canonicalUrl: 'https://github.com/rust-lang/book',
+      resourceType: 'REPOSITORY',
+      title: 'rust-lang/rust',
+      description: 'Empowering everyone to build reliable and efficient software. The Rust programming language official repository.',
+      url: 'https://github.com/rust-lang/rust',
+      canonicalUrl: 'https://github.com/rust-lang/rust',
       author: 'rust-lang',
       owner: 'rust-lang',
-      repository: 'book',
+      repository: 'rust',
       language: 'Rust',
       license: 'MIT',
-      stars: 15600,
-      forks: 3200,
-      importanceScore: 99.3,
-      tags: ['rust', 'book', 'systems-programming', 'official', 'beginner'],
-      readmePreview: '# The Rust Programming Language\n\nOfficial guide to learning Rust, aka "the book".'
+      stars: 101000,
+      forks: 13200,
+      importanceScore: 99.5,
+      tags: ['rust', 'compiler', 'systems-programming', 'language'],
+      readmePreview: '# The Rust Programming Language\n\nOfficial source repository for Rust.'
     }
   ],
   docker: [
     {
       sourceType: 'GITHUB',
       resourceType: 'CODE',
-      title: 'Docker Production Deployment Blueprints',
-      description: 'Battle-tested Docker Compose templates for deploying web apps, databases, monitoring stacks, and microservices in production.',
+      title: 'docker/awesome-compose',
+      description: 'Awesome Docker Compose samples. Curated collection of battle-tested Docker Compose recipes.',
       url: 'https://github.com/docker/awesome-compose',
       canonicalUrl: 'https://github.com/docker/awesome-compose',
       author: 'docker',
@@ -268,10 +318,10 @@ const DISCOVERED_RESOURCES: Record<string, Partial<Resource>[]> = {
       repository: 'awesome-compose',
       language: 'Dockerfile',
       license: 'Apache-2.0',
-      stars: 34200,
-      forks: 6100,
-      importanceScore: 96.7,
-      tags: ['docker', 'compose', 'containers', 'devops', 'deployment'],
+      stars: 35400,
+      forks: 6400,
+      importanceScore: 96.8,
+      tags: ['docker', 'compose', 'containers', 'devops', 'templates'],
       readmePreview: '# Awesome Compose\n\nA curated list of Docker Compose samples.'
     }
   ]
